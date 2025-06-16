@@ -1,21 +1,39 @@
-# File: release-gate-action/action.yml
+# actions/release-gate-action/action.yml
 
-on: 
-  workflow_call:
-name: ArmorCode Release Gate Test
-jobs:
-  merge-release-back-to-qa:
-    timeout-minutes: 2
-    runs-on: ubuntu-latest
+name: 'ArmorCode Release Gate Action'
+description: 'Validates ArmorCode release gate inputs and echoes them for now.'
+
+inputs:
+  product:
+    description: 'Product name'
+    required: true
+  subProduct:
+    description: 'Subproduct name'
+    required: true
+  environment:
+    description: 'Environment'
+    required: true
+  mode:
+    description: 'Mode (warn or block)'
+    required: true
+  aql:
+    description: 'AQL filter (e.g., scanType=SAST)'
+    required: false
+  armorcode_token:
+    description: 'ArmorCode API token'
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - run: |
-        echo "=== ArmorCode Release Gate Inputs ==="
-        echo "Product       
-        echo "SubProduct   
-        echo "Environment  
-        echo "Mode         
-        echo "AQL           
+    - name: Echo Release Gate Inputs
       shell: bash
+      run: |
+        echo "🔐 ArmorCode Release Gate Triggered"
+        echo "----------------------------------"
+        echo "Product       : ${{ inputs.product }}"
+        echo "SubProduct    : ${{ inputs.subProduct }}"
+        echo "Environment   : ${{ inputs.environment }}"
+        echo "Mode          : ${{ inputs.mode }}"
+        echo "AQL           : ${{ inputs.aql }}"
+        echo "Token Present : ${{ inputs.armorcode_token != '' }}"
