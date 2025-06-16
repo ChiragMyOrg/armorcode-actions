@@ -1,0 +1,37 @@
+# File: release-gate-action/action.yml
+
+name: 'ArmorCode Release Gate Action'
+description: 'A simple GitHub Action to echo inputs for testing'
+
+inputs:
+  product:
+    description: 'Product name'
+    required: true
+  subProduct:
+    description: 'Subproduct name'
+    required: true
+  environment:
+    description: 'Environment'
+    required: true
+  mode:
+    description: 'Mode (warn or block)'
+    required: true
+  aql:
+    description: 'AQL filters'
+    required: false
+  armorcode_token:
+    description: 'ArmorCode API token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        echo "=== ArmorCode Release Gate Inputs ==="
+        echo "Product       : ${{ inputs.product }}"
+        echo "SubProduct    : ${{ inputs.subProduct }}"
+        echo "Environment   : ${{ inputs.environment }}"
+        echo "Mode          : ${{ inputs.mode }}"
+        echo "AQL           : ${{ inputs.aql }}"
+        echo "Token Present : ${{ inputs.armorcode_token != '' }}"
+      shell: bash
