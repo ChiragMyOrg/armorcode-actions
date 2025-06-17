@@ -1,0 +1,8 @@
+node_modules/
+.env
+.DS_Store
+coverage/
+*.log
+
+# Do NOT ignore dist directory for GitHub Actions
+# dist/
