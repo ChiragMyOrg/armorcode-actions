@@ -1,39 +1,40 @@
-# actions/release-gate-action/action.yml
-
-name: 'ArmorCode Release Gate Action'
-description: 'Validates ArmorCode release gate inputs and echoes them for now.'
+name: 'ArmorCode Release Gate'
+description: 'Integrates ArmorCode release gates into your GitHub workflows to enforce security policies'
+author: 'ArmorCode'
+branding:
+  icon: 'shield'
+  color: 'blue'
 
 inputs:
-  product:
-    description: 'Product name'
+  group_name:
+    description: 'ArmorCode group name'
     required: true
-  subProduct:
-    description: 'Subproduct name'
+  sub_group_name:
+    description: 'ArmorCode sub-group name'
     required: true
   environment:
-    description: 'Environment'
+    description: 'Environment (e.g., production, staging)'
     required: true
   mode:
-    description: 'Mode (warn or block)'
+    description: 'Mode of operation - "block" will fail the workflow, "warn" will only print warnings'
     required: true
+    default: 'block'
   aql:
-    description: 'AQL filter (e.g., scanType=SAST)'
+    description: 'Additional AQL query parameters'
     required: false
+    default: ''
   armorcode_token:
     description: 'ArmorCode API token'
     required: true
+  max_retries:
+    description: 'Maximum number of retries for checking release gate status'
+    required: false
+    default: '5'
+  api_url:
+    description: 'ArmorCode API URL'
+    required: false
+    default: 'https://app.armorcode.com'
 
 runs:
-  using: "composite"
-  steps:
-    - name: Echo Release Gate Inputs
-      shell: bash
-      run: |
-        echo "🔐 ArmorCode Release Gate Triggered"
-        echo "----------------------------------"
-        echo "Product       : ${{ inputs.product }}"
-        echo "SubProduct    : ${{ inputs.subProduct }}"
-        echo "Environment   : ${{ inputs.environment }}"
-        echo "Mode          : ${{ inputs.mode }}"
-        echo "AQL           : ${{ inputs.aql }}"
-        echo "Token Present : ${{ inputs.armorcode_token != '' }}"
+  using: 'node20'
+  main: 'dist/index.js'
