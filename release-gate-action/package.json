@@ -4,7 +4,7 @@
   "description": "GitHub Action for ArmorCode release gates",
   "main": "dist/index.js",
   "scripts": {
-    "build": "ncc build src/index.ts -o dist",
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write **/*.ts",
