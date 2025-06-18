@@ -14,10 +14,11 @@ inputs:
     required: true
   env:
     description: 'Environment (e.g., production, staging)'
-    required: true
+    required: false
+    default: 'Production'
   mode:
     description: 'Mode of operation - "block" will fail the workflow, "warn" will only print warnings'
-    required: true
+    required: false
     default: 'block'
   additionalAQLFilters:
     description: 'Additional AQL query parameters'

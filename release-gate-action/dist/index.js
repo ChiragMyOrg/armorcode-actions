@@ -37231,7 +37231,7 @@ async function run() {
             try {
                 // Make the HTTP POST request to ArmorCode
                 const response = await postArmorCodeRequest(armorCodeToken, buildNumber, jobName, attempt, maxRetries, apiUrl, jobUrl, product, subProduct, env, additionalAQLFilters);
-                const status = response.slaStatus || 'UNKNOWN';
+                const status = response.status || 'UNKNOWN';
                 if (status === 'HOLD') {
                     // On HOLD => wait 20 seconds, then retry
                     await sleep(20000);
@@ -37240,7 +37240,7 @@ async function run() {
                     // SLA failure => provide detailed error with links
                     const detailedError = formatDetailedErrorMessage(response, product, subProduct, env, buildNumber, jobName, jobUrl);
                     // Output the formatted error message
-                    core.info(detailedError);
+                    console.log(detailedError);
                     // Handle failure based on mode
                     if (mode.toLowerCase() === 'block') {
                         core.setFailed('ArmorCode Release Gate Failed');
@@ -37253,15 +37253,14 @@ async function run() {
                 }
                 else {
                     // SUCCESS or RELEASE or other statuses => pass and break out
-                    core.info('ArmorCode Release Gate Passed');
+                    console.log('ArmorCode Release Gate Passed');
                     return;
                 }
             }
             catch (error) {
                 if (error instanceof Error) {
-                    core.error(`ArmorCode request failed: ${error.message}`);
-                    // If we've tried all retries, fail the workflow
                     if (attempt === maxRetries) {
+                        console.log(`ArmorCode request failed: ${error.message}`);
                         core.setFailed('ArmorCode request error after maximum retries.');
                         return;
                     }
@@ -37274,9 +37273,11 @@ async function run() {
     catch (error) {
         // Handle any unexpected errors
         if (error instanceof Error) {
+            console.log(`Action failed with error: ${error.message}`);
             core.setFailed(`Action failed with error: ${error.message}`);
         }
         else {
+            console.log('Action failed with unknown error');
             core.setFailed('Action failed with unknown error');
         }
     }
@@ -37314,81 +37315,159 @@ async function postArmorCodeRequest(token, buildNumber, jobName, current, end, a
 /**
  * Creates a detailed error message with links and context information
  * Handles both severity-based and risk-based release gates
+ * Implementation matches the Jenkins plugin
  */
 function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl) {
     let message = 'ArmorCode Release Gate Failed\n';
+    message += `Product: ${product}\n`;
+    message += `Sub Product: ${subProduct}\n`;
+    message += `Environment: ${env}\n`;
+    // Extract findings scope based on the release gate type
+    let findingsScope = '';
+    let hasFindings = false;
+    let isSeverityBased = false;
+    let isRiskBased = false;
+    // Determine if severity-based by checking if any severity value is > 0
+    if (responseJson.severity) {
+        const severity = responseJson.severity;
+        if ((severity.Critical && severity.Critical > 0) ||
+            (severity.High && severity.High > 0) ||
+            (severity.Medium && severity.Medium > 0) ||
+            (severity.Low && severity.Low > 0)) {
+            isSeverityBased = true;
+        }
+    }
+    else if ((responseJson['severity.Critical'] && responseJson['severity.Critical'] > 0) ||
+        (responseJson['severity.High'] && responseJson['severity.High'] > 0) ||
+        (responseJson['severity.Medium'] && responseJson['severity.Medium'] > 0) ||
+        (responseJson['severity.Low'] && responseJson['severity.Low'] > 0)) {
+        isSeverityBased = true;
+    }
+    // Determine if risk-based by checking if any otherProperties value is > 0
+    if (responseJson.otherProperties) {
+        const riskProperties = responseJson.otherProperties;
+        if ((riskProperties.VERY_POOR && riskProperties.VERY_POOR > 0) ||
+            (riskProperties.POOR && riskProperties.POOR > 0) ||
+            (riskProperties.FAIR && riskProperties.FAIR > 0) ||
+            (riskProperties.GOOD && riskProperties.GOOD > 0)) {
+            isRiskBased = true;
+        }
+    }
+    else if ((responseJson['otherProperties.VERY_POOR'] && responseJson['otherProperties.VERY_POOR'] > 0) ||
+        (responseJson['otherProperties.POOR'] && responseJson['otherProperties.POOR'] > 0) ||
+        (responseJson['otherProperties.FAIR'] && responseJson['otherProperties.FAIR'] > 0) ||
+        (responseJson['otherProperties.GOOD'] && responseJson['otherProperties.GOOD'] > 0)) {
+        isRiskBased = true;
+    }
+    // Process findings based on the determined type
+    if (isSeverityBased) {
+        // Process severity findings
+        if (responseJson.severity) {
+            const severity = responseJson.severity;
+            if (severity.Critical && severity.Critical > 0) {
+                findingsScope += `${severity.Critical} Critical, `;
+                hasFindings = true;
+            }
+            if (severity.High && severity.High > 0) {
+                findingsScope += `${severity.High} High, `;
+                hasFindings = true;
+            }
+            if (severity.Medium && severity.Medium > 0) {
+                findingsScope += `${severity.Medium} Medium, `;
+                hasFindings = true;
+            }
+            if (severity.Low && severity.Low > 0) {
+                findingsScope += `${severity.Low} Low`;
+                hasFindings = true;
+            }
+        }
+        else {
+            // Handle flattened severity format
+            const criticalCount = responseJson['severity.Critical'];
+            const highCount = responseJson['severity.High'];
+            const mediumCount = responseJson['severity.Medium'];
+            const lowCount = responseJson['severity.Low'];
+            if (criticalCount && criticalCount > 0) {
+                findingsScope += `${criticalCount} Critical, `;
+                hasFindings = true;
+            }
+            if (highCount && highCount > 0) {
+                findingsScope += `${highCount} High, `;
+                hasFindings = true;
+            }
+            if (mediumCount && mediumCount > 0) {
+                findingsScope += `${mediumCount} Medium, `;
+                hasFindings = true;
+            }
+            if (lowCount && lowCount > 0) {
+                findingsScope += `${lowCount} Low`;
+                hasFindings = true;
+            }
+        }
+    }
+    else if (isRiskBased) {
+        // Process risk findings
+        if (responseJson.otherProperties) {
+            const riskProperties = responseJson.otherProperties;
+            if (riskProperties.VERY_POOR && riskProperties.VERY_POOR > 0) {
+                findingsScope += `${riskProperties.VERY_POOR} Very Poor, `;
+                hasFindings = true;
+            }
+            if (riskProperties.POOR && riskProperties.POOR > 0) {
+                findingsScope += `${riskProperties.POOR} Poor, `;
+                hasFindings = true;
+            }
+            if (riskProperties.FAIR && riskProperties.FAIR > 0) {
+                findingsScope += `${riskProperties.FAIR} Fair, `;
+                hasFindings = true;
+            }
+            if (riskProperties.GOOD && riskProperties.GOOD > 0) {
+                findingsScope += `${riskProperties.GOOD} Good`;
+                hasFindings = true;
+            }
+        }
+        else {
+            // Handle flattened otherProperties format
+            const veryPoorCount = responseJson['otherProperties.VERY_POOR'];
+            const poorCount = responseJson['otherProperties.POOR'];
+            const fairCount = responseJson['otherProperties.FAIR'];
+            const goodCount = responseJson['otherProperties.GOOD'];
+            if (veryPoorCount && veryPoorCount > 0) {
+                findingsScope += `${veryPoorCount} Very Poor, `;
+                hasFindings = true;
+            }
+            if (poorCount && poorCount > 0) {
+                findingsScope += `${poorCount} Poor, `;
+                hasFindings = true;
+            }
+            if (fairCount && fairCount > 0) {
+                findingsScope += `${fairCount} Fair, `;
+                hasFindings = true;
+            }
+            if (goodCount && goodCount > 0) {
+                findingsScope += `${goodCount} Good`;
+                hasFindings = true;
+            }
+        }
+    }
+    // Trim trailing comma and space if present
+    if (findingsScope.endsWith(', ')) {
+        findingsScope = findingsScope.substring(0, findingsScope.length - 2);
+    }
+    if (hasFindings) {
+        message += `Findings Scope: ${findingsScope}\n`;
+    }
+    else {
+        message += 'Findings Scope: No findings detected\n';
+    }
     // Extract reason from response if available
     let reason = 'SLA check failed'; // Default reason
-    if (responseJson.failureReasonText &&
+    if (responseJson.failureReasonText !== undefined &&
         responseJson.failureReasonText !== null &&
         responseJson.failureReasonText !== '') {
         reason = responseJson.failureReasonText;
     }
-    message += `Reason         : ${reason}\n`;
-    // Add product and subproduct information
-    message += `Product        : ${product}\n`;
-    message += `Sub Product    : ${subProduct}\n`;
-    // Add findings scope
-    message += `Findings Scope : All findings\n`;
-    // Extract findings counts
-    let findingsDetails = '';
-    let hasFindings = false;
-    // Process severity findings
-    if (responseJson.severity) {
-        const severity = responseJson.severity;
-        if (severity.Critical && severity.Critical > 0) {
-            findingsDetails += `${severity.Critical} Critical, `;
-            hasFindings = true;
-        }
-        if (severity.High && severity.High > 0) {
-            findingsDetails += `${severity.High} High, `;
-            hasFindings = true;
-        }
-        if (severity.Medium && severity.Medium > 0) {
-            findingsDetails += `${severity.Medium} Medium, `;
-            hasFindings = true;
-        }
-        if (severity.Low && severity.Low > 0) {
-            findingsDetails += `${severity.Low} Low`;
-            hasFindings = true;
-        }
-    }
-    else if (responseJson['severity.Critical'] ||
-        responseJson['severity.High'] ||
-        responseJson['severity.Medium'] ||
-        responseJson['severity.Low']) {
-        // Handle flattened severity format
-        const criticalCount = responseJson['severity.Critical'];
-        const highCount = responseJson['severity.High'];
-        const mediumCount = responseJson['severity.Medium'];
-        const lowCount = responseJson['severity.Low'];
-        if (criticalCount && criticalCount > 0) {
-            findingsDetails += `${criticalCount} Critical, `;
-            hasFindings = true;
-        }
-        if (highCount && highCount > 0) {
-            findingsDetails += `${highCount} High, `;
-            hasFindings = true;
-        }
-        if (mediumCount && mediumCount > 0) {
-            findingsDetails += `${mediumCount} Medium, `;
-            hasFindings = true;
-        }
-        if (lowCount && lowCount > 0) {
-            findingsDetails += `${lowCount} Low`;
-            hasFindings = true;
-        }
-    }
-    // Trim trailing comma and space if present
-    if (findingsDetails.endsWith(', ')) {
-        findingsDetails = findingsDetails.substring(0, findingsDetails.length - 2);
-    }
-    if (hasFindings) {
-        message += `Findings       : ${findingsDetails}\n`;
-    }
-    else {
-        message += 'Findings       : No findings detected\n';
-    }
+    message += `Reason: ${reason}\n`;
     // Add details link
     const baseDetailsLink = responseJson.detailsLink ||
         responseJson.link ||
@@ -37397,7 +37476,7 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         buildNumber: [buildNumber],
         jobName: [jobName]
     }))}`;
-    message += `View the findings that caused this failure ${detailsLink}`;
+    message += `View the findings that caused this failure: ${detailsLink}`;
     return message;
 }
 /**
