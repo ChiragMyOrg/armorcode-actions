@@ -37471,10 +37471,9 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
     // Add details link
     const baseDetailsLink = responseJson.detailsLink ||
         responseJson.link ||
-        'https://app.armorcode.com/client/integrations/github';
+        'https://app.armorcode.com/client/integrations/';
     const detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(JSON.stringify({
-        buildNumber: [buildNumber],
-        jobName: [jobName]
+        buildNumber: [buildNumber]
     }))}`;
     message += `View the findings that caused this failure: ${detailsLink}`;
     return message;

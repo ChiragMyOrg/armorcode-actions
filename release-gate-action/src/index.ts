@@ -346,12 +346,11 @@ function formatDetailedErrorMessage(
   // Add details link
   const baseDetailsLink = responseJson.detailsLink || 
                           responseJson.link || 
-                          'https://app.armorcode.com/client/integrations/github';
+                          'https://app.armorcode.com/client/integrations/';
   
   const detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(
     JSON.stringify({
-      buildNumber: [buildNumber],
-      jobName: [jobName]
+      buildNumber: [buildNumber]
     })
   )}`;
   
