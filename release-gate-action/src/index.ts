@@ -45,9 +45,20 @@ async function run(): Promise<void> {
     const repoOwner = context.repo.owner
     const jobUrl = `https://github.com/${repoOwner}/${repoName}/actions/runs/${context.runId}`
 
-    // Log initial context
+    // Log all inputs (except token for security)
+    core.info('=== ArmorCode Release Gate Action - Input Parameters ===')
+    core.info(`Group Name: ${groupName}`)
+    core.info(`Sub Group Name: ${subGroupName}`)
+    core.info(`Environment: ${environment}`)
+    core.info(`Mode: ${mode}`)
+    core.info(`AQL: ${aql || '(not provided)'}`)
+    core.info(`Max Retries: ${maxRetries}`)
+    core.info(`API URL: ${apiUrl}`)
+    core.info(`Build Number: ${buildNumber}`)
+    core.info(`Job Name: ${jobName}`)
+    core.info(`Repository: ${repoOwner}/${repoName}`)
+    core.info(`Job URL: ${jobUrl}`)
     core.info('=== Starting ArmorCode Release Gate Check ===')
-    core.info(`group=${groupName}, subGroup=${subGroupName}, env=${environment}, maxRetries=${maxRetries}, mode=${mode}`)
     
     // Poll up to maxRetries times
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -70,8 +81,9 @@ async function run(): Promise<void> {
         )
         
         const status = response.status || 'UNKNOWN'
-        core.info('=== ArmorCode Release Gate ===')
+        core.info('=== ArmorCode Release Gate Response ===')
         core.info(`Status: ${status}`)
+        core.info(`Full Response: ${JSON.stringify(response, null, 2)}`)
         
         if (status === 'HOLD') {
           // On HOLD => wait 20 seconds, then retry
@@ -107,6 +119,11 @@ async function run(): Promise<void> {
       } catch (error) {
         if (error instanceof Error) {
           core.error(`[ERROR] ArmorCode request failed: ${error.message}`)
+          // Log additional error details if available
+          if (axios.isAxiosError(error) && error.response) {
+            core.error(`Response status: ${error.response.status}`)
+            core.error(`Response data: ${JSON.stringify(error.response.data)}`)
+          }
         } else {
           core.error('[ERROR] ArmorCode request failed with unknown error')
         }
@@ -164,19 +181,64 @@ async function postArmorCodeRequest(
     aql: aql || ''
   }
   
-  core.debug(`POST URL: ${url}`)
-  core.debug(`Payload: ${JSON.stringify(payload)}`)
+  // Log request details (without token)
+  core.info('=== ArmorCode API Request ===')
+  core.info(`URL: ${url}`)
+  core.info(`Method: POST`)
+  core.info(`Headers: Content-Type: application/json, Authorization: Bearer [REDACTED], Accept-Charset: UTF-8`)
+  core.info(`Payload: ${JSON.stringify(payload, null, 2)}`)
   
   // Make the request
-  const response = await axios.post(url, payload, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      'Accept-Charset': 'UTF-8'
-    }
-  })
+  const startTime = Date.now()
+  core.info(`Request started at: ${new Date(startTime).toISOString()}`)
   
-  return response.data as ArmorCodeResponse
+  try {
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Accept-Charset': 'UTF-8'
+      }
+    })
+    
+    const endTime = Date.now()
+    const duration = endTime - startTime
+    
+    // Log response details
+    core.info('=== ArmorCode API Response ===')
+    core.info(`Status Code: ${response.status}`)
+    core.info(`Response Time: ${duration}ms`)
+    core.info(`Response Headers: ${JSON.stringify(response.headers, null, 2)}`)
+    core.info(`Response Body: ${JSON.stringify(response.data, null, 2)}`)
+    
+    return response.data as ArmorCodeResponse
+  } catch (error) {
+    const endTime = Date.now()
+    const duration = endTime - startTime
+    
+    core.error('=== ArmorCode API Error ===')
+    core.error(`Request Duration Before Error: ${duration}ms`)
+    
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        core.error(`Status Code: ${error.response.status}`)
+        core.error(`Response Headers: ${JSON.stringify(error.response.headers, null, 2)}`)
+        core.error(`Response Body: ${JSON.stringify(error.response.data, null, 2)}`)
+      } else if (error.request) {
+        // The request was made but no response was received
+        core.error('No response received from server')
+        core.error(`Request: ${JSON.stringify(error.request)}`)
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        core.error(`Error Message: ${error.message}`)
+      }
+      core.error(`Error Config: ${JSON.stringify(error.config, null, 2)}`)
+    }
+    
+    throw error
+  }
 }
 
 /**
