@@ -63,7 +63,7 @@ async function run(): Promise<void> {
           additionalAQLFilters
         )
         
-        const status = response.status || 'UNKNOWN'
+        const status = response.slaStatus || 'UNKNOWN'
         
         if (status === 'HOLD') {
           // On HOLD => wait 20 seconds, then retry

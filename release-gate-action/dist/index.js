@@ -37231,7 +37231,7 @@ async function run() {
             try {
                 // Make the HTTP POST request to ArmorCode
                 const response = await postArmorCodeRequest(armorCodeToken, buildNumber, jobName, attempt, maxRetries, apiUrl, jobUrl, product, subProduct, env, additionalAQLFilters);
-                const status = response.status || 'UNKNOWN';
+                const status = response.slaStatus || 'UNKNOWN';
                 if (status === 'HOLD') {
                     // On HOLD => wait 20 seconds, then retry
                     await sleep(20000);
