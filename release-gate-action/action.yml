@@ -19,7 +19,7 @@ inputs:
     description: 'Mode of operation - "block" will fail the workflow, "warn" will only print warnings'
     required: true
     default: 'block'
-  aql:
+  additionalAQLFilters:
     description: 'Additional AQL query parameters'
     required: false
     default: ''
