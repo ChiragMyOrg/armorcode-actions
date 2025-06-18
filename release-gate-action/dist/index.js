@@ -37215,7 +37215,7 @@ async function run() {
         const subGroupName = core.getInput('sub_group_name', { required: true });
         const environment = core.getInput('environment', { required: true });
         const mode = core.getInput('mode', { required: true });
-        const aql = core.getInput('aql');
+        const additionalAQLFilters = core.getInput('additionalAQLFilters');
         const armorCodeToken = core.getInput('armorcode_token', { required: true });
         const maxRetries = parseInt(core.getInput('max_retries') || '5', 10);
         const apiUrl = core.getInput('api_url') || 'https://app.armorcode.com';
@@ -37232,7 +37232,7 @@ async function run() {
         core.info(`Sub Group Name: ${subGroupName}`);
         core.info(`Environment: ${environment}`);
         core.info(`Mode: ${mode}`);
-        core.info(`AQL: ${aql || '(not provided)'}`);
+        core.info(`Additional AQL Filters: ${additionalAQLFilters || '(not provided)'}`);
         core.info(`Max Retries: ${maxRetries}`);
         core.info(`API URL: ${apiUrl}`);
         core.info(`Build Number: ${buildNumber}`);
@@ -37245,7 +37245,7 @@ async function run() {
             try {
                 core.info(`Attempt ${attempt}/${maxRetries}`);
                 // Make the HTTP POST request to ArmorCode
-                const response = await postArmorCodeRequest(armorCodeToken, buildNumber, jobName, attempt, maxRetries, apiUrl, jobUrl, groupName, subGroupName, environment, aql);
+                const response = await postArmorCodeRequest(armorCodeToken, buildNumber, jobName, attempt, maxRetries, apiUrl, jobUrl, groupName, subGroupName, environment, additionalAQLFilters);
                 const status = response.status || 'UNKNOWN';
                 core.info('=== ArmorCode Release Gate Response ===');
                 core.info(`Status: ${status}`);
@@ -37313,20 +37313,22 @@ async function run() {
  * Sends a POST request to ArmorCode's build validation endpoint
  * with the given parameters, then returns the JSON response.
  */
-async function postArmorCodeRequest(token, buildNumber, jobName, current, end, apiUrl, jobUrl, product, subProduct, env, aql) {
+async function postArmorCodeRequest(token, buildNumber, jobName, current, end, apiUrl, jobUrl, product, subProduct, env, additionalAQLFilters) {
     const url = `${apiUrl}/client/build`;
-    // Create payload
+    // Create base payload
     const payload = {
         env,
         product,
         subProduct,
+        buildTool: 'GITHUB_ACTIONS',
         buildNumber,
-        jobName,
         current: current.toString(),
-        end: end.toString(),
-        jobURL: jobUrl,
-        aql: aql || ''
+        end: end.toString()
     };
+    // Only add additionalAQLFilters if it's provided
+    if (additionalAQLFilters && additionalAQLFilters.trim() !== '') {
+        payload.additionalAQLFilters = additionalAQLFilters.trim();
+    }
     // Log request details (without token)
     core.info('=== ArmorCode API Request ===');
     core.info(`URL: ${url}`);

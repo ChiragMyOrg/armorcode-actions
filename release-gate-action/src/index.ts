@@ -32,7 +32,7 @@ async function run(): Promise<void> {
     const subGroupName = core.getInput('sub_group_name', { required: true })
     const environment = core.getInput('environment', { required: true })
     const mode = core.getInput('mode', { required: true })
-    const aql = core.getInput('aql')
+    const additionalAQLFilters = core.getInput('additionalAQLFilters')
     const armorCodeToken = core.getInput('armorcode_token', { required: true })
     const maxRetries = parseInt(core.getInput('max_retries') || '5', 10)
     const apiUrl = core.getInput('api_url') || 'https://app.armorcode.com'
@@ -51,7 +51,7 @@ async function run(): Promise<void> {
     core.info(`Sub Group Name: ${subGroupName}`)
     core.info(`Environment: ${environment}`)
     core.info(`Mode: ${mode}`)
-    core.info(`AQL: ${aql || '(not provided)'}`)
+    core.info(`Additional AQL Filters: ${additionalAQLFilters || '(not provided)'}`)
     core.info(`Max Retries: ${maxRetries}`)
     core.info(`API URL: ${apiUrl}`)
     core.info(`Build Number: ${buildNumber}`)
@@ -77,7 +77,7 @@ async function run(): Promise<void> {
           groupName,
           subGroupName,
           environment,
-          aql
+          additionalAQLFilters
         )
         
         const status = response.status || 'UNKNOWN'
@@ -164,21 +164,24 @@ async function postArmorCodeRequest(
   product: string,
   subProduct: string,
   env: string,
-  aql: string
+  additionalAQLFilters: string
 ): Promise<ArmorCodeResponse> {
   const url = `${apiUrl}/client/build`
   
-  // Create payload
-  const payload = {
+  // Create base payload
+  const payload: Record<string, string> = {
     env,
     product,
     subProduct,
+    buildTool: 'GITHUB_ACTIONS',
     buildNumber,
-    jobName,
     current: current.toString(),
-    end: end.toString(),
-    jobURL: jobUrl,
-    aql: aql || ''
+    end: end.toString()
+  }
+  
+  // Only add additionalAQLFilters if it's provided
+  if (additionalAQLFilters && additionalAQLFilters.trim() !== '') {
+    payload.additionalAQLFilters = additionalAQLFilters.trim()
   }
   
   // Log request details (without token)
