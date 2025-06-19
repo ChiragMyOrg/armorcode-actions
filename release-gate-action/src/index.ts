@@ -33,9 +33,9 @@ async function run(): Promise<void> {
     const env = core.getInput('env', { required: true })
     const mode = core.getInput('mode', { required: true })
     const additionalAQLFilters = core.getInput('additionalAQLFilters')
-    const armorCodeToken = core.getInput('armorcode_token', { required: true })
-    const maxRetries = parseInt(core.getInput('max_retries') || '5', 10)
-    const apiUrl = core.getInput('api_url') || 'https://app.armorcode.com'
+    const armorcodeAPIToken = core.getInput('armorcodeAPIToken', { required: true })
+    const maxRetries = parseInt(core.getInput('maxRetries') || '5', 10)
+    const armorcodeHost = core.getInput('armorcodeHost') || 'https://app.armorcode.com'
 
     // Get GitHub context
     const context = github.context
@@ -50,12 +50,12 @@ async function run(): Promise<void> {
       try {
         // Make the HTTP POST request to ArmorCode
         const response = await postArmorCodeRequest(
-          armorCodeToken,
+          armorcodeAPIToken,
           buildNumber,
           jobName,
           attempt,
           maxRetries,
-          apiUrl,
+          armorcodeHost,
           jobUrl,
           product,
           subProduct,
@@ -131,14 +131,14 @@ async function postArmorCodeRequest(
   jobName: string,
   current: number,
   end: number,
-  apiUrl: string,
+  armorcodeHost: string,
   jobUrl: string,
   product: string,
   subProduct: string,
   env: string,
   additionalAQLFilters: string
 ): Promise<ArmorCodeResponse> {
-  const url = `${apiUrl}/client/build`
+  const url = `${armorcodeHost}/client/build`
   
   // Create base payload
   const payload: Record<string, string> = {

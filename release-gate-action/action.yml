@@ -24,14 +24,14 @@ inputs:
     description: 'Additional AQL query parameters'
     required: false
     default: ''
-  armorcode_token:
+  armorcodeAPIToken:
     description: 'ArmorCode API token'
     required: true
-  max_retries:
+  maxRetries:
     description: 'Maximum number of retries for checking release gate status'
     required: false
     default: '5'
-  api_url:
+  armorcodeHost:
     description: 'ArmorCode API URL'
     required: false
     default: 'https://app.armorcode.com'
