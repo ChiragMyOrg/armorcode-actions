@@ -37216,9 +37216,9 @@ async function run() {
         const env = core.getInput('env', { required: true });
         const mode = core.getInput('mode', { required: true });
         const additionalAQLFilters = core.getInput('additionalAQLFilters');
-        const armorCodeToken = core.getInput('armorcode_token', { required: true });
-        const maxRetries = parseInt(core.getInput('max_retries') || '5', 10);
-        const apiUrl = core.getInput('api_url') || 'https://app.armorcode.com';
+        const armorcodeAPIToken = core.getInput('armorcodeAPIToken', { required: true });
+        const maxRetries = parseInt(core.getInput('maxRetries') || '5', 10);
+        const armorcodeHost = core.getInput('armorcodeHost') || 'https://app.armorcode.com';
         // Get GitHub context
         const context = github.context;
         const buildNumber = context.runNumber.toString();
@@ -37230,7 +37230,7 @@ async function run() {
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 // Make the HTTP POST request to ArmorCode
-                const response = await postArmorCodeRequest(armorCodeToken, buildNumber, jobName, attempt, maxRetries, apiUrl, jobUrl, product, subProduct, env, additionalAQLFilters);
+                const response = await postArmorCodeRequest(armorcodeAPIToken, buildNumber, jobName, attempt, maxRetries, armorcodeHost, jobUrl, product, subProduct, env, additionalAQLFilters);
                 const status = response.status || 'UNKNOWN';
                 if (status === 'HOLD') {
                     // On HOLD => wait 20 seconds, then retry
@@ -37286,8 +37286,8 @@ async function run() {
  * Sends a POST request to ArmorCode's build validation endpoint
  * with the given parameters, then returns the JSON response.
  */
-async function postArmorCodeRequest(token, buildNumber, jobName, current, end, apiUrl, jobUrl, product, subProduct, env, additionalAQLFilters) {
-    const url = `${apiUrl}/client/build`;
+async function postArmorCodeRequest(token, buildNumber, jobName, current, end, armorcodeHost, jobUrl, product, subProduct, env, additionalAQLFilters) {
+    const url = `${armorcodeHost}/client/build`;
     // Create base payload
     const payload = {
         env,
