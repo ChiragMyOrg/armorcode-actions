@@ -15,6 +15,8 @@ interface ArmorCodeResponse {
     POOR?: number
     FAIR?: number
     GOOD?: number
+    productId?: number
+    subProductId?: number
   }
   failureReasonText?: string
   detailsLink?: string
@@ -322,6 +324,7 @@ function formatDetailedErrorMessage(
       }
     }
   }
+
   
   // Trim trailing comma and space if present
   if (findingsScope.endsWith(', ')) {
@@ -343,19 +346,31 @@ function formatDetailedErrorMessage(
   }
   message += `Reason: ${reason}\n`;
   
+  // Extract productId and subProductId from otherProperties if they exist
+  const productId = responseJson.otherProperties?.productId;
+  const subProductId = responseJson.otherProperties?.subProductId;
+
   // Add details link
   const baseDetailsLink = responseJson.detailsLink || 
                           responseJson.link || 
                           'https://app.armorcode.com/client/integrations/';
   
-  const detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(
+  let detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(
     JSON.stringify({
       buildNumber: [buildNumber],
       jobName: [jobName] 
     })
   )}`;
+
+    // Add product and subproduct parameters if they exist
+  if (productId) {
+    detailsLink += `&product=${productId}`;
+  }
+  if (subProductId) {
+    detailsLink += `&subproduct=${subProductId}`;
+  }
   
-  message += `View the findings that caused this failure: ${detailsLink} with jobname: ${jobName}\n`;
+  message += `View the findings that caused this failure: ${detailsLink}`;
   
   return message;
 }
