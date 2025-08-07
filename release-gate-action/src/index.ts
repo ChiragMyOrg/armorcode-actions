@@ -355,7 +355,7 @@ function formatDetailedErrorMessage(
     })
   )}`;
   
-  message += `View the findings that caused this failure: ${detailsLink}`;
+  message += `View the findings that caused this failure: ${detailsLink} with jobname: ${jobName}\n`;
   
   return message;
 }
