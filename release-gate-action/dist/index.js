@@ -37473,9 +37473,10 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         responseJson.link ||
         'https://app.armorcode.com/client/integrations/';
     const detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(JSON.stringify({
-        buildNumber: [buildNumber]
+        buildNumber: [buildNumber],
+        jobName: [jobName]
     }))}`;
-    message += `View the findings that caused this failure: ${detailsLink}`;
+    message += `View the findings that caused this failure: ${detailsLink} with jobname: ${jobName}\n`;
     return message;
 }
 /**
