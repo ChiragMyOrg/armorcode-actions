@@ -350,7 +350,8 @@ function formatDetailedErrorMessage(
   
   const detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(
     JSON.stringify({
-      buildNumber: [buildNumber]
+      buildNumber: [buildNumber],
+      jobName: [jobName] 
     })
   )}`;
   
