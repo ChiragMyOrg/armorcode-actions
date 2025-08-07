@@ -37487,7 +37487,40 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         detailsLink += `&subproduct=${subProductId}`;
     }
     message += `View the findings that caused this failure: ${detailsLink}`;
+    createSummary(responseJson, detailsLink);
     return message;
+}
+// After processing the response and creating the detailsLink
+function createSummary(responseJson, detailsLink) {
+    const status = responseJson.status;
+    const severity = responseJson.severity || {};
+    const slaStatus = responseJson.slaStatus;
+    // Determine status emoji
+    const statusEmoji = status === "PASS" ? "✅" : "❌";
+    const slaEmoji = slaStatus === "PASSED" ? "✅" : "❌";
+    // Create summary message
+    let summaryMsg = `### ArmorCode Release Gate ${statusEmoji} ${status}\n\n`;
+    // Add severity counts with appropriate emojis
+    summaryMsg += "#### Security Issues:\n";
+    summaryMsg += `- 🔴 Critical: ${severity.Critical || 0}\n`;
+    summaryMsg += `- 🟠 High: ${severity.High || 0}\n`;
+    summaryMsg += `- 🟡 Medium: ${severity.Medium || 0}\n`;
+    summaryMsg += `- 🟢 Low: ${severity.Low || 0}\n\n`;
+    // Add SLA status
+    summaryMsg += `#### SLA Status: ${slaEmoji} ${slaStatus}\n\n`;
+    // Add details link
+    summaryMsg += `[View Details in ArmorCode](${detailsLink})\n`;
+    // Output to GitHub Actions summary
+    core.summary
+        .addRaw(summaryMsg)
+        .write();
+    // Also output as notice or error depending on status
+    if (status === "PASS") {
+        core.notice(summaryMsg);
+    }
+    else {
+        core.error(summaryMsg);
+    }
 }
 /**
  * Sleep function for async/await
