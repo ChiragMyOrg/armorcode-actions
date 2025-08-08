@@ -37160,133 +37160,22 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 6144:
+/***/ 8229:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
 
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const core = __importStar(__nccwpck_require__(2186));
-const github = __importStar(__nccwpck_require__(5438));
+exports.postArmorCodeRequest = postArmorCodeRequest;
 const axios_1 = __importDefault(__nccwpck_require__(8757));
-/**
- * Main function that runs the ArmorCode Release Gate action
- */
-async function run() {
-    try {
-        // Get inputs from action
-        const product = core.getInput('product', { required: true });
-        const subProduct = core.getInput('subProduct', { required: true });
-        const env = core.getInput('env', { required: true });
-        const mode = core.getInput('mode', { required: true });
-        const additionalAQLFilters = core.getInput('additionalAQLFilters');
-        const armorcodeAPIToken = core.getInput('armorcodeAPIToken', { required: true });
-        const maxRetries = parseInt(core.getInput('maxRetries') || '5', 10);
-        const armorcodeHost = core.getInput('armorcodeHost') || 'https://app.armorcode.com';
-        // Get GitHub context
-        const context = github.context;
-        const buildNumber = context.runNumber.toString();
-        const jobName = context.job || '';
-        const repoName = context.repo.repo;
-        const repoOwner = context.repo.owner;
-        const jobUrl = `https://github.com/${repoOwner}/${repoName}/actions/runs/${context.runId}`;
-        // Poll up to maxRetries times
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                // Make the HTTP POST request to ArmorCode
-                const response = await postArmorCodeRequest(armorcodeAPIToken, buildNumber, jobName, attempt, maxRetries, armorcodeHost, jobUrl, product, subProduct, env, additionalAQLFilters);
-                const status = response.status || 'UNKNOWN';
-                if (status === 'HOLD') {
-                    // On HOLD => wait 20 seconds, then retry
-                    await sleep(20000);
-                }
-                else if (status === 'FAILED') {
-                    // SLA failure => provide detailed error with links
-                    const detailedError = formatDetailedErrorMessage(response, product, subProduct, env, buildNumber, jobName, jobUrl);
-                    // Output the formatted error message
-                    console.log(detailedError);
-                    // Handle failure based on mode
-                    if (mode.toLowerCase() === 'block') {
-                        core.setFailed('ArmorCode Release Gate Failed');
-                        return;
-                    }
-                    else if (mode.toLowerCase() === 'warn') {
-                        core.warning('ArmorCode Release Gate Failed (warning only)');
-                        break;
-                    }
-                }
-                else {
-                    // SUCCESS or RELEASE or other statuses => pass and break out
-                    console.log('ArmorCode Release Gate Passed');
-                    return;
-                }
-            }
-            catch (error) {
-                if (error instanceof Error) {
-                    if (attempt === maxRetries) {
-                        console.log(`ArmorCode request failed: ${error.message}`);
-                        core.setFailed('ArmorCode request error after maximum retries.');
-                        return;
-                    }
-                    // Otherwise wait and retry
-                    await sleep(20000);
-                }
-            }
-        }
-    }
-    catch (error) {
-        // Handle any unexpected errors
-        if (error instanceof Error) {
-            console.log(`Action failed with error: ${error.message}`);
-            core.setFailed(`Action failed with error: ${error.message}`);
-        }
-        else {
-            console.log('Action failed with unknown error');
-            core.setFailed('Action failed with unknown error');
-        }
-    }
-}
 /**
  * Sends a POST request to ArmorCode's build validation endpoint
  * with the given parameters, then returns the JSON response.
  */
-async function postArmorCodeRequest(token, buildNumber, jobName, current, end, armorcodeHost, jobUrl, product, subProduct, env, additionalAQLFilters) {
+async function postArmorCodeRequest(token, buildNumber, jobName, current, end, armorcodeHost, jobURL, product, subProduct, env, additionalAQLFilters) {
     const url = `${armorcodeHost}/client/build`;
     // Create base payload
     const payload = {
@@ -37295,6 +37184,8 @@ async function postArmorCodeRequest(token, buildNumber, jobName, current, end, a
         subProduct,
         buildTool: 'GITHUB_ACTIONS',
         buildNumber,
+        jobName,
+        jobURL,
         current: current.toString(),
         end: end.toString()
     };
@@ -37312,18 +37203,29 @@ async function postArmorCodeRequest(token, buildNumber, jobName, current, end, a
     });
     return response.data;
 }
+
+
+/***/ }),
+
+/***/ 109:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.formatDetailedErrorMessage = formatDetailedErrorMessage;
+const summary_1 = __nccwpck_require__(2553);
 /**
  * Creates a detailed error message with links and context information
  * Handles both severity-based and risk-based release gates
- * Implementation matches the Jenkins plugin
  */
-function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl) {
-    let message = 'ArmorCode Release Gate Failed\n';
+function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl, githubToken) {
+    let message = "ArmorCode Release Gate Failed\n";
     message += `Product: ${product}\n`;
     message += `Sub Product: ${subProduct}\n`;
     message += `Environment: ${env}\n`;
     // Extract findings scope based on the release gate type
-    let findingsScope = '';
+    let findingsScope = "";
     let hasFindings = false;
     let isSeverityBased = false;
     let isRiskBased = false;
@@ -37337,10 +37239,14 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
             isSeverityBased = true;
         }
     }
-    else if ((responseJson['severity.Critical'] && responseJson['severity.Critical'] > 0) ||
-        (responseJson['severity.High'] && responseJson['severity.High'] > 0) ||
-        (responseJson['severity.Medium'] && responseJson['severity.Medium'] > 0) ||
-        (responseJson['severity.Low'] && responseJson['severity.Low'] > 0)) {
+    else if ((responseJson["severity.Critical"] &&
+        responseJson["severity.Critical"] > 0) ||
+        (responseJson["severity.High"] &&
+            responseJson["severity.High"] > 0) ||
+        (responseJson["severity.Medium"] &&
+            responseJson["severity.Medium"] > 0) ||
+        (responseJson["severity.Low"] &&
+            responseJson["severity.Low"] > 0)) {
         isSeverityBased = true;
     }
     // Determine if risk-based by checking if any otherProperties value is > 0
@@ -37353,10 +37259,14 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
             isRiskBased = true;
         }
     }
-    else if ((responseJson['otherProperties.VERY_POOR'] && responseJson['otherProperties.VERY_POOR'] > 0) ||
-        (responseJson['otherProperties.POOR'] && responseJson['otherProperties.POOR'] > 0) ||
-        (responseJson['otherProperties.FAIR'] && responseJson['otherProperties.FAIR'] > 0) ||
-        (responseJson['otherProperties.GOOD'] && responseJson['otherProperties.GOOD'] > 0)) {
+    else if ((responseJson["otherProperties.VERY_POOR"] &&
+        responseJson["otherProperties.VERY_POOR"] > 0) ||
+        (responseJson["otherProperties.POOR"] &&
+            responseJson["otherProperties.POOR"] > 0) ||
+        (responseJson["otherProperties.FAIR"] &&
+            responseJson["otherProperties.FAIR"] > 0) ||
+        (responseJson["otherProperties.GOOD"] &&
+            responseJson["otherProperties.GOOD"] > 0)) {
         isRiskBased = true;
     }
     // Process findings based on the determined type
@@ -37383,10 +37293,10 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         }
         else {
             // Handle flattened severity format
-            const criticalCount = responseJson['severity.Critical'];
-            const highCount = responseJson['severity.High'];
-            const mediumCount = responseJson['severity.Medium'];
-            const lowCount = responseJson['severity.Low'];
+            const criticalCount = responseJson["severity.Critical"];
+            const highCount = responseJson["severity.High"];
+            const mediumCount = responseJson["severity.Medium"];
+            const lowCount = responseJson["severity.Low"];
             if (criticalCount && criticalCount > 0) {
                 findingsScope += `${criticalCount} Critical, `;
                 hasFindings = true;
@@ -37428,10 +37338,10 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         }
         else {
             // Handle flattened otherProperties format
-            const veryPoorCount = responseJson['otherProperties.VERY_POOR'];
-            const poorCount = responseJson['otherProperties.POOR'];
-            const fairCount = responseJson['otherProperties.FAIR'];
-            const goodCount = responseJson['otherProperties.GOOD'];
+            const veryPoorCount = responseJson["otherProperties.VERY_POOR"];
+            const poorCount = responseJson["otherProperties.POOR"];
+            const fairCount = responseJson["otherProperties.FAIR"];
+            const goodCount = responseJson["otherProperties.GOOD"];
             if (veryPoorCount && veryPoorCount > 0) {
                 findingsScope += `${veryPoorCount} Very Poor, `;
                 hasFindings = true;
@@ -37451,20 +37361,20 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         }
     }
     // Trim trailing comma and space if present
-    if (findingsScope.endsWith(', ')) {
+    if (findingsScope.endsWith(", ")) {
         findingsScope = findingsScope.substring(0, findingsScope.length - 2);
     }
     if (hasFindings) {
         message += `Findings Scope: ${findingsScope}\n`;
     }
     else {
-        message += 'Findings Scope: No findings detected\n';
+        message += "Findings Scope: No findings detected\n";
     }
     // Extract reason from response if available
-    let reason = 'SLA check failed'; // Default reason
+    let reason = "SLA check failed"; // Default reason
     if (responseJson.failureReasonText !== undefined &&
         responseJson.failureReasonText !== null &&
-        responseJson.failureReasonText !== '') {
+        responseJson.failureReasonText !== "") {
         reason = responseJson.failureReasonText;
     }
     message += `Reason: ${reason}\n`;
@@ -37474,10 +37384,10 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
     // Add details link
     const baseDetailsLink = responseJson.detailsLink ||
         responseJson.link ||
-        'https://app.armorcode.com/client/integrations/';
-    let detailsLink = `${baseDetailsLink}${baseDetailsLink.includes('?') ? '&' : '?'}filters=${encodeURIComponent(JSON.stringify({
+        "https://app.armorcode.com/client/integrations/";
+    let detailsLink = `${baseDetailsLink}${baseDetailsLink.includes("?") ? "&" : "?"}filters=${encodeURIComponent(JSON.stringify({
         buildNumber: [buildNumber],
-        jobName: [jobName]
+        jobName: [jobName],
     }))}`;
     // Add product and subproduct parameters if they exist
     if (productId) {
@@ -37487,11 +37397,247 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         detailsLink += `&subproduct=${subProductId}`;
     }
     message += `View the findings that caused this failure: ${detailsLink}`;
-    createSummary(responseJson, detailsLink);
+    // Create a summary for GitHub Actions
+    (0, summary_1.createSummary)(responseJson, detailsLink, githubToken);
     return message;
 }
-// After processing the response and creating the detailsLink
-function createSummary(responseJson, detailsLink) {
+
+
+/***/ }),
+
+/***/ 6144:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const core = __importStar(__nccwpck_require__(2186));
+const runner_1 = __nccwpck_require__(3878);
+// Run the action and handle any uncaught errors
+try {
+    (0, runner_1.run)();
+}
+catch (error) {
+    if (error instanceof Error) {
+        core.setFailed(`Action failed with error: ${error.message}`);
+    }
+    else {
+        core.setFailed('Action failed with unknown error');
+    }
+}
+
+
+/***/ }),
+
+/***/ 3878:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = run;
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+const api_1 = __nccwpck_require__(8229);
+const formatter_1 = __nccwpck_require__(109);
+const uility_1 = __nccwpck_require__(7262);
+/**
+ * Main function that runs the ArmorCode Release Gate action
+ */
+async function run() {
+    try {
+        // Get inputs from action
+        const inputs = {
+            product: core.getInput('product', { required: true }),
+            subProduct: core.getInput('subProduct', { required: true }),
+            env: core.getInput('env', { required: true }),
+            mode: core.getInput('mode', { required: true }),
+            additionalAQLFilters: core.getInput('additionalAQLFilters'),
+            armorcodeAPIToken: core.getInput('armorcodeAPIToken', { required: true }),
+            maxRetries: parseInt(core.getInput('maxRetries') || '5', 10),
+            armorcodeHost: core.getInput('armorcodeHost') || 'https://app.armorcode.com',
+            githubToken: core.getInput('github-token') || process.env.GITHUB_TOKEN || ''
+        };
+        // Get GitHub context
+        const context = github.context;
+        const buildNumber = context.runNumber.toString();
+        const jobName = context.job || '';
+        const repoName = context.repo.repo;
+        const repoOwner = context.repo.owner;
+        const jobURL = `https://github.com/${repoOwner}/${repoName}/actions/runs/${context.runId}`;
+        // Poll up to maxRetries times
+        for (let attempt = 1; attempt <= inputs.maxRetries; attempt++) {
+            try {
+                // Make the HTTP POST request to ArmorCode
+                const response = await (0, api_1.postArmorCodeRequest)(inputs.armorcodeAPIToken, buildNumber, jobName, attempt, inputs.maxRetries, inputs.armorcodeHost, jobURL, inputs.product, inputs.subProduct, inputs.env, inputs.additionalAQLFilters);
+                const status = response.status || 'UNKNOWN';
+                if (status === 'HOLD') {
+                    // On HOLD => wait 20 seconds, then retry
+                    await (0, uility_1.sleep)(20000);
+                }
+                else if (status === 'FAILED') {
+                    // SLA failure => provide detailed error with links
+                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken);
+                    // Output the formatted error message
+                    console.log(detailedError);
+                    // Handle failure based on mode
+                    if (inputs.mode.toLowerCase() === 'block') {
+                        core.setFailed('ArmorCode Release Gate Failed');
+                        return;
+                    }
+                    else if (inputs.mode.toLowerCase() === 'warn') {
+                        core.warning('ArmorCode Release Gate Failed (warning only)');
+                        break;
+                    }
+                }
+                else {
+                    // SUCCESS or RELEASE or other statuses => pass and break out
+                    console.log('ArmorCode Release Gate Passed');
+                    return;
+                }
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    if (attempt === inputs.maxRetries) {
+                        console.log(`ArmorCode request failed: ${error.message}`);
+                        core.setFailed('ArmorCode request error after maximum retries.');
+                        return;
+                    }
+                    // Otherwise wait and retry
+                    await (0, uility_1.sleep)(20000);
+                }
+            }
+        }
+    }
+    catch (error) {
+        // Handle any unexpected errors
+        if (error instanceof Error) {
+            console.log(`Action failed with error: ${error.message}`);
+            core.setFailed(`Action failed with error: ${error.message}`);
+        }
+        else {
+            console.log('Action failed with unknown error');
+            core.setFailed('Action failed with unknown error');
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ 2553:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.createSummary = createSummary;
+const core = __importStar(__nccwpck_require__(2186));
+const github = __importStar(__nccwpck_require__(5438));
+/**
+ * Creates a summary message and posts it to the GitHub Actions summary
+ * and as a comment to the pull request if applicable.
+ */
+async function createSummary(responseJson, detailsLink, githubToken) {
     const status = responseJson.status;
     const severity = responseJson.severity || {};
     const slaStatus = responseJson.slaStatus;
@@ -37521,15 +37667,58 @@ function createSummary(responseJson, detailsLink) {
     else {
         core.error(summaryMsg);
     }
+    // Post comment to PR if this is a pull request event
+    await postCommentToPullRequest(summaryMsg, githubToken);
 }
+/**
+ * Posts a comment to the pull request if the action is triggered by a PR event
+ */
+async function postCommentToPullRequest(message, githubToken) {
+    const context = github.context;
+    // Check if this is a pull request event
+    const isPullRequest = context.payload.pull_request ?? null;
+    if (!isPullRequest) {
+        core.debug('Not a pull request event, skipping PR comment');
+        return;
+    }
+    try {
+        const octokit = github.getOctokit(githubToken);
+        // Get PR number from context
+        const prNumber = context.payload?.pull_request?.number;
+        if (prNumber !== undefined) {
+            await octokit.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: message
+            });
+        }
+        else {
+            core.warning('Failed to get PR number');
+        }
+        core.info(`Posted ArmorCode release gate results to PR #${prNumber}`);
+    }
+    catch (error) {
+        core.warning(`Failed to post comment to pull request: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
+
+/***/ }),
+
+/***/ 7262:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.sleep = sleep;
 /**
  * Sleep function for async/await
  */
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-// Run the action
-run();
 
 
 /***/ }),

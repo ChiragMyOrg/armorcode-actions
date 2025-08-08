@@ -35,6 +35,10 @@ inputs:
     description: 'ArmorCode API URL'
     required: false
     default: 'https://app.armorcode.com'
+  github-token:
+    description: 'GitHub token for posting PR comments'
+    required: false
+    default: ${{ github.token }}  
 
 runs:
   using: 'node20'
