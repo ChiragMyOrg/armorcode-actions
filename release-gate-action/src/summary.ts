@@ -55,10 +55,10 @@ export async function createSummary(
     summaryMsg += `  <tr>\n    <td>🟢 Low</td>\n    <td><b>${lowCount}</b></td>\n  </tr>\n`;
     summaryMsg += `</table>\n\n`;
     
-    // Add details link with professional appearance
+    // Add details link that opens in a new tab
     const link = detailsLink || responseJson.detailsLink || responseJson.link || "";
     if (link) {
-      summaryMsg += `**[View Findings in ArmorCode →](${link})**\n\n`;
+        summaryMsg += `<a href="${link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">**View Findings in ArmorCode →**</a>\n\n`;
     }
     
     try {
