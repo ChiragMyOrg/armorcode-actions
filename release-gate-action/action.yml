@@ -37,6 +37,9 @@ inputs:
     default: 'https://app.armorcode.com'
   github-token:
     description: 'GitHub token for posting PR comments'
+    permissions:
+      pull-requests: write
+      contents: read
     required: false
     default: ${{ github.token }}  
 

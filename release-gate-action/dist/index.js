@@ -37388,14 +37388,9 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
     let detailsLink = `${baseDetailsLink}${baseDetailsLink.includes("?") ? "&" : "?"}filters=${encodeURIComponent(JSON.stringify({
         buildNumber: [buildNumber],
         jobName: [jobName],
+        product: [productId],
+        subproduct: [subProductId]
     }))}`;
-    // Add product and subproduct parameters if they exist
-    if (productId) {
-        detailsLink += `&product=${productId}`;
-    }
-    if (subProductId) {
-        detailsLink += `&subproduct=${subProductId}`;
-    }
     message += `View the findings that caused this failure: ${detailsLink}`;
     // Create a summary for GitHub Actions
     (0, summary_1.createSummary)(responseJson, detailsLink, githubToken);
@@ -37641,31 +37636,46 @@ async function createSummary(responseJson, detailsLink, githubToken) {
     const status = responseJson.status;
     const severity = responseJson.severity || {};
     const slaStatus = responseJson.slaStatus;
-    // Determine status emoji
+    // Create a more visually appealing summary
+    let summaryMsg = '';
+    // Header with large emoji and status
     const statusEmoji = status === "PASS" ? "✅" : "❌";
+    const statusColor = status === "PASS" ? "green" : "red";
+    summaryMsg += `<h1 align="center">${statusEmoji} ArmorCode Release Gate</h1>\n\n`;
+    summaryMsg += `<h2 align="center"><code style="color:${statusColor}">${status}</code></h2>\n\n`;
+    // Security issues in a more styled table
+    summaryMsg += `<h3 align="center">Security Issues</h3>\n\n`;
+    summaryMsg += `<table align="center">\n`;
+    summaryMsg += `  <tr>\n    <th>Severity</th>\n    <th>Count</th>\n    <th>Status</th>\n  </tr>\n`;
+    // Add rows with conditional styling
+    const criticalCount = severity.Critical || 0;
+    const highCount = severity.High || 0;
+    const mediumCount = severity.Medium || 0;
+    const lowCount = severity.Low || 0;
+    summaryMsg += `  <tr>\n    <td>🔴 Critical</td>\n    <td align="center"><b>${criticalCount}</b></td>\n    <td>${criticalCount > 0 ? "❗️" : "✓"}</td>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>🟠 High</td>\n    <td align="center"><b>${highCount}</b></td>\n    <td>${highCount > 0 ? "⚠️" : "✓"}</td>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>🟡 Medium</td>\n    <td align="center"><b>${mediumCount}</b></td>\n    <td>${mediumCount > 0 ? "⚠️" : "✓"}</td>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>🟢 Low</td>\n    <td align="center"><b>${lowCount}</b></td>\n    <td>${lowCount > 0 ? "ℹ️" : "✓"}</td>\n  </tr>\n`;
+    summaryMsg += `</table>\n\n`;
+    // SLA status with badge-like appearance
     const slaEmoji = slaStatus === "PASSED" ? "✅" : "❌";
-    // Create summary message
-    let summaryMsg = `### ArmorCode Release Gate ${statusEmoji} ${status}\n\n`;
-    // Add severity counts with appropriate emojis
-    summaryMsg += "#### Security Issues:\n";
-    summaryMsg += `- 🔴 Critical: ${severity.Critical || 0}\n`;
-    summaryMsg += `- 🟠 High: ${severity.High || 0}\n`;
-    summaryMsg += `- 🟡 Medium: ${severity.Medium || 0}\n`;
-    summaryMsg += `- 🟢 Low: ${severity.Low || 0}\n\n`;
-    // Add SLA status
-    summaryMsg += `#### SLA Status: ${slaEmoji} ${slaStatus}\n\n`;
-    // Add details link
-    summaryMsg += `[View Details in ArmorCode](${detailsLink})\n`;
+    const slaColor = slaStatus === "PASSED" ? "green" : "red";
+    summaryMsg += `<p align="center"><b>SLA Status:</b> <code style="background-color:${slaColor};color:white;padding:3px 6px;border-radius:3px">${slaEmoji} ${slaStatus}</code></p>\n\n`;
+    // Add details link with button-like appearance
+    const link = detailsLink || responseJson.detailsLink || responseJson.link || "";
+    if (link) {
+        summaryMsg += `<p align="center"><a href="${link}" target="_blank"><img alt="View in ArmorCode" src="https://img.shields.io/badge/View_Details-ArmorCode-blue?style=for-the-badge"></a></p>\n\n`;
+    }
     // Output to GitHub Actions summary
     core.summary
         .addRaw(summaryMsg)
         .write();
     // Also output as notice or error depending on status
     if (status === "PASS") {
-        core.notice(summaryMsg);
+        core.notice(`ArmorCode Release Gate: ${status}`);
     }
     else {
-        core.error(summaryMsg);
+        core.error(`ArmorCode Release Gate: ${status}`);
     }
     // Post comment to PR if this is a pull request event
     await postCommentToPullRequest(summaryMsg, githubToken);

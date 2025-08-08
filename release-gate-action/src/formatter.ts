@@ -207,16 +207,10 @@ export function formatDetailedErrorMessage(
     JSON.stringify({
       buildNumber: [buildNumber],
       jobName: [jobName],
+      product: [productId],
+      subproduct: [subProductId]
     })
   )}`;
-
-  // Add product and subproduct parameters if they exist
-  if (productId) {
-    detailsLink += `&product=${productId}`;
-  }
-  if (subProductId) {
-    detailsLink += `&subproduct=${subProductId}`;
-  }
 
   message += `View the findings that caused this failure: ${detailsLink}`;
 
