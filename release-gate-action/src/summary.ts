@@ -15,16 +15,37 @@ export async function createSummary(
     const severity = responseJson.severity || {};
     const slaStatus = responseJson.slaStatus;
     
+    // Extract product information from inputs or response
+    const product = process.env.INPUT_PRODUCT || responseJson.productId || '';
+    const subProduct = process.env.INPUT_SUBPRODUCT || responseJson.subProductId || '';
+    const environment = process.env.INPUT_ENV || 'Production';
+    const failureReason = responseJson.failureReasonText || (status !== "PASS" ? "Security policy violation" : "");
+    
     // Create a professional summary
     let summaryMsg = '';
     
     // Single professional heading
     const statusEmoji = status === "PASS" ? "✅" : "❌";
-    summaryMsg += `<h2>${statusEmoji} ArmorCode Release Gate Summary</h2>\n\n`;
+    summaryMsg += `<h2>ArmorCode Release Gate Summary ${statusEmoji}</h2>\n\n`;
+    
+    // Product information section
+    summaryMsg += `<h3>Product Information</h3>\n`;
+    summaryMsg += `<table>\n`;
+    summaryMsg += `  <tr>\n    <th align="left">Property</th>\n    <th align="left">Value</th>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>Product</td>\n    <td><b>${product}</b></td>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>Sub Product</td>\n    <td><b>${subProduct}</b></td>\n  </tr>\n`;
+    summaryMsg += `  <tr>\n    <td>Environment</td>\n    <td><b>${environment}</b></td>\n  </tr>\n`;
+    summaryMsg += `</table>\n\n`;
     
     // Status information
     const statusColor = status === "PASS" ? "green" : "red";
-    summaryMsg += `<p><strong>Status:</strong> <code style="color:${statusColor}">${status}</code></p>\n\n`;
+    summaryMsg += `<h3>Gate Status</h3>\n`;
+    summaryMsg += `<p><strong>Status:</strong> <code style="color:${statusColor}">${status}</code></p>\n`;
+    
+    // Add failure reason if present
+    if (failureReason && status !== "PASS") {
+      summaryMsg += `<p><strong>Reason:</strong> ${failureReason}</p>\n\n`;
+    }
     
     // Security issues in a clean table
     summaryMsg += `<h3>Security Issues</h3>\n`;
@@ -46,12 +67,12 @@ export async function createSummary(
     // SLA status with clean formatting
     const slaEmoji = slaStatus === "PASSED" ? "✅" : "❌";
     const slaColor = slaStatus === "PASSED" ? "green" : "red";
-    summaryMsg += `<p><strong>SLA Status:</strong> <code style="color:${slaColor}">${slaEmoji} ${slaStatus}</code></p>\n\n`;
+    summaryMsg += `<p><strong>SLA Status:</strong> <code style="color:${slaColor}">${slaStatus} ${slaEmoji}</code></p>\n\n`;
     
     // Add details link with professional appearance
     const link = detailsLink || responseJson.detailsLink || responseJson.link || "";
     if (link) {
-      summaryMsg += `<p><a href="${link}" target="_blank" style="text-decoration:none;"><strong>View Complete Analysis in ArmorCode →</strong></a></p>\n\n`;
+      summaryMsg += `<p><a href="${link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;"><strong>View Complete Analysis in ArmorCode →</strong></a></p>\n\n`;
     }
     
     try {
