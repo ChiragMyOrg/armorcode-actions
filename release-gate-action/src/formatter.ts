@@ -215,7 +215,7 @@ export function formatDetailedErrorMessage(
   message += `View the findings that caused this failure: ${detailsLink}`;
 
   // Create a summary for GitHub Actions
-  createSummary(responseJson, detailsLink, githubToken);
+  createSummary(product, subProduct, env, responseJson, detailsLink, githubToken);
 
   return message;
 }
