@@ -35,7 +35,7 @@ inputs:
     description: 'ArmorCode API URL'
     required: false
     default: 'https://app.armorcode.com'
-  github-token:
+  githubToken:
     description: 'GitHub token for posting PR comments'
     permissions:
       pull-requests: write
