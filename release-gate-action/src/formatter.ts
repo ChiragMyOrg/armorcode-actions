@@ -8,6 +8,7 @@ import { createSummary } from "./summary";
  */
 export function formatDetailedErrorMessage(
   responseJson: ArmorCodeResponse,
+  status: string,
   product: string,
   subProduct: string,
   env: string,
@@ -17,7 +18,12 @@ export function formatDetailedErrorMessage(
   githubToken: string,
   mode: string
 ): string {
-  let message = "ArmorCode Release Gate Failed\n";
+  let message;
+  if (status === "FAILED") {
+    message = "ArmorCode Release Gate Failed\n";
+  } else {
+    message = "ArmorCode Release Gate Passed\n";
+  }
 
   message += `Product: ${product}\n`;
   message += `Sub Product: ${subProduct}\n`;
@@ -182,41 +188,54 @@ export function formatDetailedErrorMessage(
   }
 
   // Extract reason from response if available
-  let reason = "SLA check failed"; // Default reason
-  if (
-    responseJson.failureReasonText !== undefined &&
-    responseJson.failureReasonText !== null &&
-    responseJson.failureReasonText !== ""
-  ) {
-    reason = responseJson.failureReasonText;
+  let reason;
+  let detailsLink = "";
+
+  if (status === "FAILED") {
+    reason = "SLA check failed";
+    if (
+      responseJson.failureReasonText !== undefined &&
+      responseJson.failureReasonText !== null &&
+      responseJson.failureReasonText !== ""
+    ) {
+      reason = responseJson.failureReasonText;
+    }
+    message += `Reason: ${reason}\n`;
+
+    // Extract productId and subProductId from otherProperties if they exist
+    const productId = responseJson.otherProperties?.productId;
+    const subProductId = responseJson.otherProperties?.subProductId;
+
+    // Add details link
+    const baseDetailsLink =
+      responseJson.detailsLink ||
+      responseJson.link ||
+      "https://app.armorcode.com/client/integrations/";
+
+    detailsLink = `${baseDetailsLink}${
+      baseDetailsLink.includes("?") ? "&" : "?"
+    }filters=${encodeURIComponent(
+      JSON.stringify({
+        buildNumber: [buildNumber],
+        jobName: [jobName],
+        product: [productId],
+        subproduct: [subProductId],
+      })
+    )}`;
+
+    message += `View the findings that caused this failure: ${detailsLink}`;
   }
-  message += `Reason: ${reason}\n`;
-
-  // Extract productId and subProductId from otherProperties if they exist
-  const productId = responseJson.otherProperties?.productId;
-  const subProductId = responseJson.otherProperties?.subProductId;
-
-  // Add details link
-  const baseDetailsLink =
-    responseJson.detailsLink ||
-    responseJson.link ||
-    "https://app.armorcode.com/client/integrations/";
-
-  let detailsLink = `${baseDetailsLink}${
-    baseDetailsLink.includes("?") ? "&" : "?"
-  }filters=${encodeURIComponent(
-    JSON.stringify({
-      buildNumber: [buildNumber],
-      jobName: [jobName],
-      product: [productId],
-      subproduct: [subProductId]
-    })
-  )}`;
-
-  message += `View the findings that caused this failure: ${detailsLink}`;
 
   // Create a summary for GitHub Actions
-  createSummary(product, subProduct, env, responseJson, detailsLink, githubToken, mode);
+  createSummary(
+    product,
+    subProduct,
+    env,
+    responseJson,
+    detailsLink,
+    githubToken,
+    mode
+  );
 
   return message;
 }

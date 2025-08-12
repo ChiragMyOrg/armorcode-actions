@@ -58,6 +58,7 @@ export async function run(): Promise<void> {
           // SLA failure => provide detailed error with links
           const detailedError = formatDetailedErrorMessage(
             response,
+            status,
             inputs.product,
             inputs.subProduct,
             inputs.env,
@@ -81,6 +82,21 @@ export async function run(): Promise<void> {
           }
         } else {
           // SUCCESS or RELEASE or other statuses => pass and break out
+          const detailedError = formatDetailedErrorMessage(
+            response,
+            status,
+            inputs.product,
+            inputs.subProduct,
+            inputs.env,
+            buildNumber,
+            jobName,
+            jobURL,
+            inputs.githubToken,
+            inputs.mode
+          )
+
+          // Output the formatted error message
+          console.log(detailedError)
           console.log('ArmorCode Release Gate Passed')
           return
         }

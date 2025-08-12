@@ -37219,8 +37219,14 @@ const summary_1 = __nccwpck_require__(2553);
  * Creates a detailed error message with links and context information
  * Handles both severity-based and risk-based release gates
  */
-function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl, githubToken, mode) {
-    let message = "ArmorCode Release Gate Failed\n";
+function formatDetailedErrorMessage(responseJson, status, product, subProduct, env, buildNumber, jobName, jobUrl, githubToken, mode) {
+    let message;
+    if (status === "FAILED") {
+        message = "ArmorCode Release Gate Failed\n";
+    }
+    else {
+        message = "ArmorCode Release Gate Passed\n";
+    }
     message += `Product: ${product}\n`;
     message += `Sub Product: ${subProduct}\n`;
     message += `Environment: ${env}\n`;
@@ -37371,27 +37377,31 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
         message += "Findings Scope: No findings detected\n";
     }
     // Extract reason from response if available
-    let reason = "SLA check failed"; // Default reason
-    if (responseJson.failureReasonText !== undefined &&
-        responseJson.failureReasonText !== null &&
-        responseJson.failureReasonText !== "") {
-        reason = responseJson.failureReasonText;
+    let reason;
+    let detailsLink = "";
+    if (status === "FAILED") {
+        reason = "SLA check failed";
+        if (responseJson.failureReasonText !== undefined &&
+            responseJson.failureReasonText !== null &&
+            responseJson.failureReasonText !== "") {
+            reason = responseJson.failureReasonText;
+        }
+        message += `Reason: ${reason}\n`;
+        // Extract productId and subProductId from otherProperties if they exist
+        const productId = responseJson.otherProperties?.productId;
+        const subProductId = responseJson.otherProperties?.subProductId;
+        // Add details link
+        const baseDetailsLink = responseJson.detailsLink ||
+            responseJson.link ||
+            "https://app.armorcode.com/client/integrations/";
+        detailsLink = `${baseDetailsLink}${baseDetailsLink.includes("?") ? "&" : "?"}filters=${encodeURIComponent(JSON.stringify({
+            buildNumber: [buildNumber],
+            jobName: [jobName],
+            product: [productId],
+            subproduct: [subProductId],
+        }))}`;
+        message += `View the findings that caused this failure: ${detailsLink}`;
     }
-    message += `Reason: ${reason}\n`;
-    // Extract productId and subProductId from otherProperties if they exist
-    const productId = responseJson.otherProperties?.productId;
-    const subProductId = responseJson.otherProperties?.subProductId;
-    // Add details link
-    const baseDetailsLink = responseJson.detailsLink ||
-        responseJson.link ||
-        "https://app.armorcode.com/client/integrations/";
-    let detailsLink = `${baseDetailsLink}${baseDetailsLink.includes("?") ? "&" : "?"}filters=${encodeURIComponent(JSON.stringify({
-        buildNumber: [buildNumber],
-        jobName: [jobName],
-        product: [productId],
-        subproduct: [subProductId]
-    }))}`;
-    message += `View the findings that caused this failure: ${detailsLink}`;
     // Create a summary for GitHub Actions
     (0, summary_1.createSummary)(product, subProduct, env, responseJson, detailsLink, githubToken, mode);
     return message;
@@ -37538,7 +37548,7 @@ async function run() {
                 }
                 else if (status === 'FAILED') {
                     // SLA failure => provide detailed error with links
-                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken, inputs.mode);
+                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, status, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken, inputs.mode);
                     // Output the formatted error message
                     console.log(detailedError);
                     // Handle failure based on mode
@@ -37553,6 +37563,9 @@ async function run() {
                 }
                 else {
                     // SUCCESS or RELEASE or other statuses => pass and break out
+                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, status, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken, inputs.mode);
+                    // Output the formatted error message
+                    console.log(detailedError);
                     console.log('ArmorCode Release Gate Passed');
                     return;
                 }
@@ -37640,27 +37653,27 @@ async function createSummary(product, subProduct, env, responseJson, detailsLink
     let summaryMsg = '';
     // Status heading with emoji
     const isWarnMode = mode.toLowerCase() === 'warn';
-    const statusEmoji = status === "PASS" ? "✅" : isWarnMode ? "⚠️" : "❌";
-    const statusText = status === "PASS" ? "ArmorCode Release Gate Passed" : "ArmorCode Release Gate Failed";
+    const statusEmoji = status === "FAILED" ? isWarnMode ? "⚠️" : "❌" : "✅";
+    const statusText = status === "FAILED" ? "ArmorCode Release Gate Failed" : "ArmorCode Release Gate Passed";
     summaryMsg += `### ${statusEmoji} ${statusText}\n`;
     // Add special message for PASS case
-    if (status === "PASS") {
+    if (status !== "FAILED") {
         summaryMsg += "No findings that breach the ArmorCode Release Gate were found.\n";
     }
     // Add warning mode note
-    if (status !== "PASS" && isWarnMode) {
+    if (status === "FAILED" && isWarnMode) {
         summaryMsg += "Note: ArmorCode Release Gate is currently running in warning mode.\n";
     }
     // Product information as bullet points
     summaryMsg += `* **Product:** ${product}\n`;
     summaryMsg += `* **Sub Product:** ${subProduct}\n`;
     summaryMsg += `* **Environment:** ${env}\n`;
-    // Add failure reason if present
-    if (failureReason && status !== "PASS") {
+    // Add failure reason if FAILED
+    if (failureReason && status === "FAILED") {
         summaryMsg += `* **Reason:** ${failureReason}\n`;
     }
-    // Only add findings summary if not PASS
-    if (status !== "PASS") {
+    // Only add findings summary if FAILED
+    if (status === "FAILED") {
         summaryMsg += '\n**Findings Summary:**\n\n';
         // Security issues in HTML table format - without status indicators
         summaryMsg += `<table>\n`;
@@ -37690,7 +37703,7 @@ async function createSummary(product, subProduct, env, responseJson, detailsLink
             .write();
     }
     catch (error) {
-        core.warning(`Failed to write to GitHub Actions summary: ${error instanceof Error ? error.message : String(error)}`);
+        // core.warning(`Failed to write to GitHub Actions summary: ${error instanceof Error ? error.message : String(error)}`);
     }
     // Post comment to PR if this is a pull request event
     await postCommentToPullRequest(summaryMsg, githubToken);

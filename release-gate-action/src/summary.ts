@@ -24,17 +24,17 @@ export async function createSummary(
     
     // Status heading with emoji
     const isWarnMode = mode.toLowerCase() === 'warn';
-    const statusEmoji = status === "PASS" ? "✅" : isWarnMode ? "⚠️" : "❌";
-    const statusText = status === "PASS" ? "ArmorCode Release Gate Passed" : "ArmorCode Release Gate Failed";
+    const statusEmoji = status === "FAILED" ?  isWarnMode ? "⚠️" : "❌" : "✅" ;
+    const statusText = status === "FAILED" ? "ArmorCode Release Gate Failed" : "ArmorCode Release Gate Passed";
     summaryMsg += `### ${statusEmoji} ${statusText}\n`;
 
     // Add special message for PASS case
-    if (status === "PASS") {
+    if (status !== "FAILED") {
       summaryMsg += "No findings that breach the ArmorCode Release Gate were found.\n";
     }
 
     // Add warning mode note
-    if (status !== "PASS" && isWarnMode) {
+    if (status === "FAILED" && isWarnMode) {
       summaryMsg += "Note: ArmorCode Release Gate is currently running in warning mode.\n";
     }
     
@@ -43,13 +43,13 @@ export async function createSummary(
     summaryMsg += `* **Sub Product:** ${subProduct}\n`;
     summaryMsg += `* **Environment:** ${env}\n`;
     
-    // Add failure reason if present
-    if (failureReason && status !== "PASS") {
+    // Add failure reason if FAILED
+    if (failureReason && status === "FAILED") {
       summaryMsg += `* **Reason:** ${failureReason}\n`;
     }
     
-    // Only add findings summary if not PASS
-    if (status !== "PASS") {
+    // Only add findings summary if FAILED
+    if (status === "FAILED") {
       summaryMsg += '\n**Findings Summary:**\n\n';
       
       // Security issues in HTML table format - without status indicators
@@ -85,7 +85,7 @@ export async function createSummary(
         .write();
       
     } catch (error) {
-      core.warning(`Failed to write to GitHub Actions summary: ${error instanceof Error ? error.message : String(error)}`);
+      // core.warning(`Failed to write to GitHub Actions summary: ${error instanceof Error ? error.message : String(error)}`);
     }
     
     // Post comment to PR if this is a pull request event
