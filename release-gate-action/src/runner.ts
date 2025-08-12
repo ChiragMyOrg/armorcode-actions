@@ -20,7 +20,7 @@ export async function run(): Promise<void> {
       armorcodeAPIToken: core.getInput('armorcodeAPIToken', { required: true }),
       maxRetries: parseInt(core.getInput('maxRetries') || '5', 10),
       armorcodeHost: core.getInput('armorcodeHost') || 'https://app.armorcode.com',
-      githubToken: core.getInput('github-token') || process.env.GITHUB_TOKEN || ''
+      githubToken: core.getInput('githubToken') || process.env.GITHUB_TOKEN || ''
     }
 
     // Get GitHub context
