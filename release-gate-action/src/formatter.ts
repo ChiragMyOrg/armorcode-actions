@@ -14,7 +14,8 @@ export function formatDetailedErrorMessage(
   buildNumber: string,
   jobName: string,
   jobUrl: string,
-  githubToken: string
+  githubToken: string,
+  mode: string
 ): string {
   let message = "ArmorCode Release Gate Failed\n";
 
@@ -213,9 +214,6 @@ export function formatDetailedErrorMessage(
   )}`;
 
   message += `View the findings that caused this failure: ${detailsLink}`;
-
-    // Extract mode from core input
-    const mode = core.getInput('mode');
 
   // Create a summary for GitHub Actions
   createSummary(product, subProduct, env, responseJson, detailsLink, githubToken, mode);

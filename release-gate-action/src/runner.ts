@@ -64,7 +64,8 @@ export async function run(): Promise<void> {
             buildNumber,
             jobName,
             jobURL,
-            inputs.githubToken
+            inputs.githubToken,
+            inputs.mode
           )
           
           // Output the formatted error message

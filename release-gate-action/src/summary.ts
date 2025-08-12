@@ -13,18 +13,17 @@ export async function createSummary(
     responseJson: any,
     detailsLink: string,
     githubToken: string,
-    mode?: string 
+    mode: string 
   ): Promise<void> {
     const status = responseJson.status;
     const severity = responseJson.severity || {};
-    const slaStatus = responseJson.slaStatus;
     const failureReason = responseJson.failureReasonText || "";
     
     // Create a professional summary
     let summaryMsg = '';
     
     // Status heading with emoji
-    const isWarnMode = mode?.toLowerCase() === 'warn';
+    const isWarnMode = mode.toLowerCase() === 'warn';
     const statusEmoji = status === "PASS" ? "✅" : isWarnMode ? "⚠️" : "❌";
     const statusText = status === "PASS" ? "ArmorCode Release Gate Passed" : "ArmorCode Release Gate Failed";
     summaryMsg += `### ${statusEmoji} ${statusText}\n`;
