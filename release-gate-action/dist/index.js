@@ -37219,7 +37219,7 @@ const summary_1 = __nccwpck_require__(2553);
  * Creates a detailed error message with links and context information
  * Handles both severity-based and risk-based release gates
  */
-function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl, githubToken) {
+function formatDetailedErrorMessage(responseJson, product, subProduct, env, buildNumber, jobName, jobUrl, githubToken, mode) {
     let message = "ArmorCode Release Gate Failed\n";
     message += `Product: ${product}\n`;
     message += `Sub Product: ${subProduct}\n`;
@@ -37393,7 +37393,7 @@ function formatDetailedErrorMessage(responseJson, product, subProduct, env, buil
     }))}`;
     message += `View the findings that caused this failure: ${detailsLink}`;
     // Create a summary for GitHub Actions
-    (0, summary_1.createSummary)(product, subProduct, env, responseJson, detailsLink, githubToken);
+    (0, summary_1.createSummary)(product, subProduct, env, responseJson, detailsLink, githubToken, mode);
     return message;
 }
 
@@ -37517,7 +37517,7 @@ async function run() {
             armorcodeAPIToken: core.getInput('armorcodeAPIToken', { required: true }),
             maxRetries: parseInt(core.getInput('maxRetries') || '5', 10),
             armorcodeHost: core.getInput('armorcodeHost') || 'https://app.armorcode.com',
-            githubToken: core.getInput('github-token') || process.env.GITHUB_TOKEN || ''
+            githubToken: core.getInput('githubToken') || process.env.GITHUB_TOKEN || ''
         };
         // Get GitHub context
         const context = github.context;
@@ -37538,7 +37538,7 @@ async function run() {
                 }
                 else if (status === 'FAILED') {
                     // SLA failure => provide detailed error with links
-                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken);
+                    const detailedError = (0, formatter_1.formatDetailedErrorMessage)(response, inputs.product, inputs.subProduct, inputs.env, buildNumber, jobName, jobURL, inputs.githubToken, inputs.mode);
                     // Output the formatted error message
                     console.log(detailedError);
                     // Handle failure based on mode
@@ -37632,17 +37632,25 @@ const github = __importStar(__nccwpck_require__(5438));
  * Creates a summary message and posts it to the GitHub Actions summary
  * and as a comment to the pull request if applicable.
  */
-async function createSummary(product, subProduct, env, responseJson, detailsLink, githubToken) {
+async function createSummary(product, subProduct, env, responseJson, detailsLink, githubToken, mode) {
     const status = responseJson.status;
     const severity = responseJson.severity || {};
-    const slaStatus = responseJson.slaStatus;
     const failureReason = responseJson.failureReasonText || "";
     // Create a professional summary
     let summaryMsg = '';
     // Status heading with emoji
-    const statusEmoji = status === "PASS" ? "✅" : "❌";
+    const isWarnMode = mode.toLowerCase() === 'warn';
+    const statusEmoji = status === "PASS" ? "✅" : isWarnMode ? "⚠️" : "❌";
     const statusText = status === "PASS" ? "ArmorCode Release Gate Passed" : "ArmorCode Release Gate Failed";
     summaryMsg += `### ${statusEmoji} ${statusText}\n`;
+    // Add special message for PASS case
+    if (status === "PASS") {
+        summaryMsg += "No findings that breach the ArmorCode Release Gate were found.\n";
+    }
+    // Add warning mode note
+    if (status !== "PASS" && isWarnMode) {
+        summaryMsg += "Note: ArmorCode Release Gate is currently running in warning mode.\n";
+    }
     // Product information as bullet points
     summaryMsg += `* **Product:** ${product}\n`;
     summaryMsg += `* **Sub Product:** ${subProduct}\n`;
@@ -37651,24 +37659,27 @@ async function createSummary(product, subProduct, env, responseJson, detailsLink
     if (failureReason && status !== "PASS") {
         summaryMsg += `* **Reason:** ${failureReason}\n`;
     }
-    summaryMsg += '\n**Findings Summary:**\n\n';
-    // Security issues in HTML table format - without status indicators
-    summaryMsg += `<table>\n`;
-    summaryMsg += `  <tr>\n    <th>Severity</th>\n    <th>Count</th>\n  </tr>\n`;
-    // Add rows with severity counts
-    const criticalCount = severity.Critical || 0;
-    const highCount = severity.High || 0;
-    const mediumCount = severity.Medium || 0;
-    const lowCount = severity.Low || 0;
-    summaryMsg += `  <tr>\n    <td>🔴 Critical</td>\n    <td><b>${criticalCount}</b></td>\n  </tr>\n`;
-    summaryMsg += `  <tr>\n    <td>🟠 High</td>\n    <td><b>${highCount}</b></td>\n  </tr>\n`;
-    summaryMsg += `  <tr>\n    <td>🟡 Medium</td>\n    <td><b>${mediumCount}</b></td>\n  </tr>\n`;
-    summaryMsg += `  <tr>\n    <td>🟢 Low</td>\n    <td><b>${lowCount}</b></td>\n  </tr>\n`;
-    summaryMsg += `</table>\n\n`;
-    // Add details link that opens in a new tab
-    const link = detailsLink || responseJson.detailsLink || responseJson.link || "";
-    if (link) {
-        summaryMsg += `<a href="${link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">**View Findings in ArmorCode →**</a>\n\n`;
+    // Only add findings summary if not PASS
+    if (status !== "PASS") {
+        summaryMsg += '\n**Findings Summary:**\n\n';
+        // Security issues in HTML table format - without status indicators
+        summaryMsg += `<table>\n`;
+        summaryMsg += `  <tr>\n    <th>Severity</th>\n    <th>Count</th>\n  </tr>\n`;
+        // Add rows with severity counts
+        const criticalCount = severity.Critical || 0;
+        const highCount = severity.High || 0;
+        const mediumCount = severity.Medium || 0;
+        const lowCount = severity.Low || 0;
+        summaryMsg += `  <tr>\n    <td>🔴 Critical</td>\n    <td><b>${criticalCount}</b></td>\n  </tr>\n`;
+        summaryMsg += `  <tr>\n    <td>🟠 High</td>\n    <td><b>${highCount}</b></td>\n  </tr>\n`;
+        summaryMsg += `  <tr>\n    <td>🟡 Medium</td>\n    <td><b>${mediumCount}</b></td>\n  </tr>\n`;
+        summaryMsg += `  <tr>\n    <td>🟢 Low</td>\n    <td><b>${lowCount}</b></td>\n  </tr>\n`;
+        summaryMsg += `</table>\n\n`;
+        // Add details link that opens in a new tab
+        const link = detailsLink || responseJson.detailsLink || responseJson.link || "";
+        if (link) {
+            summaryMsg += `<a href="${link}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">**View Findings in ArmorCode →**</a>\n\n`;
+        }
     }
     try {
         // Clear any existing summary first
@@ -37680,13 +37691,6 @@ async function createSummary(product, subProduct, env, responseJson, detailsLink
     }
     catch (error) {
         core.warning(`Failed to write to GitHub Actions summary: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    // Also output as notice or error depending on status
-    if (status === "PASS") {
-        core.notice(`ArmorCode Release Gate: ${status}`);
-    }
-    else {
-        core.error(`ArmorCode Release Gate: ${status}`);
     }
     // Post comment to PR if this is a pull request event
     await postCommentToPullRequest(summaryMsg, githubToken);
